@@ -1,0 +1,230 @@
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:async';
+import 'dart:convert';
+import 'model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:newproject/item_detail.dart';
+import 'package:newproject/drawe.dart';
+
+class Test extends StatefulWidget {
+  @override
+  _TestState createState() => _TestState();
+}
+
+class _TestState extends State<Test> {
+  // bool isPressed = false;
+  bool _loadInd = true;
+    String accEmail='';
+
+  
+  List<Model> ebody;
+  List data;
+  Model nam;
+
+
+  getemail(String key) async {
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+accEmail= preferences.getString(key);
+
+setState(() {
+  
+});
+  }
+   @override
+  void initState() {
+     fun();
+getemail('email');
+    super.initState();
+  }
+
+
+  fun() async {
+    data = await getProduct();
+    ebody = new List<Model>(data.length);
+    //nam = new Model(name, price, picture, isClicked);
+    //print(_loadInd);
+    for (int i = 0; i < data.length; i++) {
+      ebody[i] = new Model(data[i]['name'], data[i]['price'],data[i]['product_id'], "", false);
+    //print(data[i]['product_id']);
+      //ebody[i]->name ="Ss";
+
+      // ebody[i].name = data[i]['name'];
+     // print(ebody[i].name);
+    }
+    setState(() {
+      _loadInd = false;
+    });
+    //  print(ebody);
+    //print(_loadInd);
+  }
+
+
+
+
+  likeItem(int i) {
+    print('test');
+    setState(() {
+      if (ebody[i].isClicked) {
+      
+        ebody[i].isClicked = false;
+        
+      } else {
+        ebody[i].isClicked = true;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+   
+    return Scaffold(
+      appBar: new AppBar(
+          backgroundColor: Colors.blueGrey,
+          title: new Text('Market'),
+          //centerTitle: true,
+         
+        ),
+         backgroundColor: Colors.white,
+        drawer: Drawer1(),
+      
+      body: _buildBody());
+  }
+
+  Widget _buildBody() {
+    if (_loadInd == true) {
+      return new Center(
+        child: new CircularProgressIndicator(),
+      );
+    } else {
+      return new GridView.builder(
+          gridDelegate:
+              SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2),
+          itemCount: ebody.length,
+          
+          itemBuilder: (BuildContext context, int i) {
+            return Container(
+                //height: 100,
+                color: Colors.white,
+                child: Card(
+                  child: InkWell(
+                    onTap: () {
+                       Navigator.push(context, new MaterialPageRoute(
+                          builder: (BuildContext context)=> item_detail(
+                           name: "image/chicken.jpg",
+                            text: ebody[i].name,
+                            price: ebody[i].price.toString(),
+                          )));
+                    },
+                    child: GridTile(
+                        footer: Container(
+                            color: Colors.white70,
+                            child: new Column(
+                              children: <Widget>[
+                                new Row(
+                                  children: <Widget>[
+                                    Text(ebody[i].name),
+                                    Text(ebody[i].product_id.toString()),
+
+
+                                    IconButton(
+                                      padding: EdgeInsets.only(left: 40.0),
+                                      onPressed: () {
+                                        likeItem(i);
+                                       
+                                        if (ebody[i].isClicked == true) {
+                                          Post newpost = new Post(
+                                          prodId: ebody[i].product_id.toString(),
+                                           email:accEmail,
+                                          
+                                           
+                                              );
+                                             //   print(accEmail);
+                                        //       //print('$newpost newPost');
+                                          createPost(
+                                       
+                                              'https://supermarket-robot000.000webhostapp.com/api/add_wish',
+
+                                              newpost.toMap()
+                                              );
+                                          Scaffold.of(context)
+                                              .showSnackBar(new SnackBar(
+                                            content: new Text(
+                                                '${ebody[i].name} added to your Wish List'),
+                                            duration:
+                                                Duration(milliseconds: 500),
+                                          ));
+                                        }
+                                      },
+                                      icon: new Icon(ebody[i].isClicked
+                                          ? Icons.favorite
+                                          : Icons.favorite_border),
+                                      color: Colors.red,
+                                    ),
+                                  ],
+                                ),
+                                Padding(
+                                  padding: EdgeInsets.only(right: 100.0),
+                                  child: Text(
+                                    ebody[i].price.toString(),
+                                  ),
+                                )
+                              ],
+                            )),
+                        child: Image.asset(
+                          'image/chicken.jpg',
+                          fit: BoxFit.cover,
+                        )),
+                  ),
+                ));
+          });
+    }
+  }
+}
+
+Future<List> getProduct() async {
+  String url = 'http://supermarket-robot000.000webhostapp.com/api/get_prod';
+
+  http.Response response = await http.get(url);
+  // print('test1');
+  
+  return json.decode(response.body);
+}
+
+
+
+class Post {
+
+  final String prodId,email;
+
+  Post({this.prodId,this.email});
+
+  factory Post.fromJson(Map<String, dynamic> json) {
+    return Post(
+       email: json['mail'],
+       prodId: json['product_id']);
+  }
+  Map toMap() {
+    var map = new Map<String, dynamic>();
+
+    map['mail'] = email;
+    map['product_id']=prodId;
+
+    return map;
+  }
+}
+
+Future<Post> createPost(String url, Map body) async {
+  return http.post(url, body: body).then((http.Response response) {
+    final int statusCode = response.statusCode;
+
+    if (statusCode < 200 || statusCode > 400 || json == null) {
+      print('error');
+      throw new Exception("Error while fetching data");
+    }
+    
+  print('enterd');
+    return Post.fromJson(json.decode(response.body));
+  });
+}
+
